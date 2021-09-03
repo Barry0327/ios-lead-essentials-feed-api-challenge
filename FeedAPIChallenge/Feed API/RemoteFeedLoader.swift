@@ -22,17 +22,7 @@ public final class RemoteFeedLoader: FeedLoader {
 		client.get(from: url) { result in
 			switch result {
 			case let .success((data, response)):
-				if response.statusCode != 200 {
-					completion(.failure(Error.invalidData))
-				} else {
-					let decoder = JSONDecoder()
-					do {
-						let root = try decoder.decode(Root.self, from: data)
-						completion(.success(root.feedImages))
-					} catch {
-						completion(.failure(Error.invalidData))
-					}
-				}
+				completion(FeedImagesMapper.map(data, from: response))
 			case .failure:
 				completion(.failure(Error.connectivity))
 			}
@@ -40,28 +30,39 @@ public final class RemoteFeedLoader: FeedLoader {
 	}
 }
 
-private struct Root: Decodable {
-	let items: [Item]
+struct FeedImagesMapper {
+	private struct Root: Decodable {
+		let items: [Item]
 
-	var feedImages: [FeedImage] {
-		items.map { $0.feedImage }
-	}
-}
-
-private struct Item: Decodable {
-	let id: UUID
-	let description: String?
-	let location: String?
-	let url: URL
-
-	private enum CodingKeys: String, CodingKey {
-		case id = "image_id"
-		case description = "image_desc"
-		case location = "image_loc"
-		case url = "image_url"
+		var feedImages: [FeedImage] {
+			items.map { $0.feedImage }
+		}
 	}
 
-	var feedImage: FeedImage {
-		FeedImage(id: id, description: description, location: location, url: url)
+	private struct Item: Decodable {
+		let id: UUID
+		let description: String?
+		let location: String?
+		let url: URL
+
+		private enum CodingKeys: String, CodingKey {
+			case id = "image_id"
+			case description = "image_desc"
+			case location = "image_loc"
+			case url = "image_url"
+		}
+
+		var feedImage: FeedImage {
+			FeedImage(id: id, description: description, location: location, url: url)
+		}
+	}
+
+	static func map(_ data: Data, from response: HTTPURLResponse) -> FeedLoader.Result {
+		guard response.statusCode == 200,
+		      let root = try? JSONDecoder().decode(Root.self, from: data) else {
+			return .failure(RemoteFeedLoader.Error.invalidData)
+		}
+
+		return .success(root.feedImages)
 	}
 }
