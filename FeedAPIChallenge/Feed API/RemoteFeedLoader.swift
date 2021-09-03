@@ -57,8 +57,10 @@ struct FeedImagesMapper {
 		}
 	}
 
+	private static var validCode: Int { 200 }
+
 	static func map(_ data: Data, from response: HTTPURLResponse) -> FeedLoader.Result {
-		guard response.statusCode == 200,
+		guard response.statusCode == validCode,
 		      let root = try? JSONDecoder().decode(Root.self, from: data) else {
 			return .failure(RemoteFeedLoader.Error.invalidData)
 		}
