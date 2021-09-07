@@ -13,7 +13,7 @@ final class FeedImagesMapper {
 		let items: [Item]
 
 		var feedImages: [FeedImage] {
-			items.map { $0.feedImage }
+			items.map(\.feedImage)
 		}
 	}
 
